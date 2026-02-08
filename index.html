@@ -4,37 +4,35 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Dual Wave Helper</title>
-
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #f7f7f7;
+      background: #f5f5f5;
       margin: 0;
-      padding: 1.5rem;
-      color: #222;
+      padding: 1.2rem;
     }
-
     .card {
       max-width: 420px;
-      margin: 0 auto;
-      background: white;
-      border-radius: 12px;
-      padding: 1.5rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      margin: auto;
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 1.4rem;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
     }
-
     h1 {
       font-size: 1.4rem;
-      margin-bottom: 1rem;
+      margin-bottom: 0.2rem;
     }
-
+    p {
+      color: #555;
+      font-size: 0.9rem;
+    }
     label {
       display: block;
-      margin-top: 1rem;
-      font-weight: 500;
+      margin-top: 1.2rem;
+      font-weight: 600;
     }
-
-    input {
+    input[type="number"] {
       width: 100%;
       padding: 0.6rem;
       font-size: 1rem;
@@ -42,111 +40,116 @@
       border-radius: 8px;
       border: 1px solid #ccc;
     }
-
-    button {
-      margin-top: 1.5rem;
+    input[type="range"] {
       width: 100%;
-      padding: 0.8rem;
-      font-size: 1rem;
-      border: none;
-      border-radius: 10px;
-      background: #2563eb;
-      color: white;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #1d4ed8;
-    }
-
-    .result {
-      margin-top: 1.5rem;
-      padding: 1rem;
-      background: #f1f5f9;
-      border-radius: 10px;
-    }
-
-    .result strong {
-      display: block;
       margin-top: 0.5rem;
+    }
+    .result {
+      margin-top: 1.6rem;
+      padding: 1rem;
+      background: #f0f7ff;
+      border-radius: 10px;
+    }
+    .result h2 {
+      margin: 0;
       font-size: 1.1rem;
+    }
+    .result p {
+      margin: 0.4rem 0 0;
+      font-size: 0.95rem;
+    }
+    .footer {
+      text-align: center;
+      font-size: 0.75rem;
+      color: #777;
+      margin-top: 1rem;
     }
   </style>
 </head>
-
 <body>
-  <div class="card">
-    <h1>Dual Wave Helper</h1>
 
-    <label>Carbohydrates (g)
-      <input id="carbs" type="number" min="0" />
-    </label>
+<div class="card">
+  <h1>Dual Wave Helper</h1>
+  <p>Meal behaviour guide only — no insulin calculation.</p>
 
-    <label>Fat (g)
-      <input id="fat" type="number" min="0" />
-    </label>
+  <label>Carbohydrates (g)</label>
+  <input type="number" id="carbs" min="0" value="0"/>
 
-    <label>Protein (g)
-      <input id="protein" type="number" min="0" />
-    </label>
+  <label>Fat (g)</label>
+  <input type="number" id="fat" min="0" value="0"/>
 
-    <button onclick="calculate()">Check delivery split</button>
+  <label>Protein (g)</label>
+  <input type="number" id="protein" min="0" value="0"/>
 
-    <div id="output" class="result"></div>
+  <label>Fat & protein impact</label>
+  <input type="range" id="aggression" min="-1" max="1" step="1" value="0"/>
+  <p style="font-size:0.8rem">
+    Softer ← Normal → More aggressive
+  </p>
+
+  <div class="result" id="output">
+    <h2>Enter meal details</h2>
+    <p>Delivery suggestion will appear here.</p>
   </div>
 
-  <script>
-    function calculate() {
-      const carbs = Number(document.getElementById("carbs").value);
-      const fat = Number(document.getElementById("fat").value);
-      const protein = Number(document.getElementById("protein").value);
-      const output = document.getElementById("output");
+  <div class="footer">
+    For guidance only. Individual response varies.
+  </div>
+</div>
 
-      if (carbs <= 0) {
-        output.innerHTML = "Enter carbohydrates to continue.";
-        return;
-      }
+<script>
+function calculate() {
+  const carbs = Number(carbsInput.value);
+  const fat = Number(fatInput.value);
+  const protein = Number(proteinInput.value);
+  const aggression = Number(aggressionInput.value);
 
-      // --- Internal weighting ---
-      const fatWeight = fat * 2.0;
-      const proteinWeight = protein * 1.0;
-      const delayLoad = fatWeight + proteinWeight;
+  if (carbs <= 0) {
+    output.innerHTML = "<h2>Enter carbs</h2><p>Carbs are required.</p>";
+    return;
+  }
 
-      const delayRatio = delayLoad / carbs;
+  const fatProteinCalories = (fat * 9) + (protein * 4);
+  const carbCalories = carbs * 4;
+  let fpRatio = fatProteinCalories / (fatProteinCalories + carbCalories);
 
-      // --- Decision tree ---
-      let resultText = "Straight bolus";
+  // Aggression adjustment
+  fpRatio += aggression * 0.08;
 
-      if (delayRatio >= 0.3) {
-        let split = "60 / 40";
-        let duration = "3 hours";
+  let delivery = "Straight bolus";
+  let details = "No dual wave needed.";
 
-        if (delayRatio < 0.45) {
-          split = "70 / 30";
-          duration = "2 hours";
-        } else if (delayRatio < 0.7) {
-          split = "60 / 40";
-          duration = "3 hours";
-        } else if (delayRatio < 1.0) {
-          split = "50 / 50";
-          duration = "3 hours";
-        } else if (delayRatio < 1.4) {
-          split = "40 / 60";
-          duration = "4 hours";
-        } else {
-          split = "30 / 70";
-          duration = "4 hours";
-        }
+  if (fpRatio >= 0.60) {
+    delivery = "Dual wave";
+    details = "Delivery split: 30 / 70<br>Duration: 4 hours";
+  } else if (fpRatio >= 0.50) {
+    delivery = "Dual wave";
+    details = "Delivery split: 40 / 60<br>Duration: 4 hours";
+  } else if (fpRatio >= 0.40) {
+    delivery = "Dual wave";
+    details = "Delivery split: 50 / 50<br>Duration: 3 hours";
+  } else if (fpRatio >= 0.30) {
+    delivery = "Dual wave";
+    details = "Delivery split: 60 / 40<br>Duration: 2 hours";
+  } else if (fpRatio >= 0.25) {
+    delivery = "Dual wave";
+    details = "Delivery split: 70 / 30<br>Duration: 2 hours";
+  }
 
-        resultText = `
-          Dual wave<br/>
-          <strong>Suggested delivery split:</strong> ${split}<br/>
-          <strong>Duration:</strong> ${duration}
-        `;
-      }
+  output.innerHTML = `<h2>${delivery}</h2><p>${details}</p>`;
+}
 
-      output.innerHTML = resultText;
-    }
-  </script>
+const carbsInput = document.getElementById("carbs");
+const fatInput = document.getElementById("fat");
+const proteinInput = document.getElementById("protein");
+const aggressionInput = document.getElementById("aggression");
+const output = document.getElementById("output");
+
+carbsInput.oninput = calculate;
+fatInput.oninput = calculate;
+proteinInput.oninput = calculate;
+aggressionInput.oninput = calculate;
+</script>
+
 </body>
 </html>
