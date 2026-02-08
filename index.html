@@ -2,164 +2,150 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Bolus Pattern Helper</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dual Wave Helper</title>
 
   <style>
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #f5f5f5;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f7f7f7;
       margin: 0;
-      padding: 20px;
-      color: #111;
+      padding: 1.5rem;
+      color: #222;
     }
 
     .card {
       max-width: 420px;
       margin: 0 auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 14px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
 
     h1 {
       font-size: 1.4rem;
-      margin-bottom: 6px;
-    }
-
-    p {
-      margin-top: 0;
-      color: #555;
-      font-size: 0.95rem;
+      margin-bottom: 1rem;
     }
 
     label {
       display: block;
-      margin-top: 14px;
-      font-weight: 600;
+      margin-top: 1rem;
+      font-weight: 500;
     }
 
-    input, select {
+    input {
       width: 100%;
-      padding: 12px;
-      font-size: 1.05rem;
-      margin-top: 6px;
-      border-radius: 10px;
+      padding: 0.6rem;
+      font-size: 1rem;
+      margin-top: 0.3rem;
+      border-radius: 8px;
       border: 1px solid #ccc;
     }
 
     button {
+      margin-top: 1.5rem;
       width: 100%;
-      margin-top: 20px;
-      padding: 14px;
-      font-size: 1.1rem;
-      border-radius: 12px;
+      padding: 0.8rem;
+      font-size: 1rem;
       border: none;
-      background: #111;
-      color: #fff;
+      border-radius: 10px;
+      background: #2563eb;
+      color: white;
       cursor: pointer;
     }
 
+    button:hover {
+      background: #1d4ed8;
+    }
+
     .result {
-      margin-top: 20px;
-      padding: 16px;
-      border-radius: 12px;
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: #f1f5f9;
+      border-radius: 10px;
+    }
+
+    .result strong {
+      display: block;
+      margin-top: 0.5rem;
       font-size: 1.1rem;
-      text-align: center;
-    }
-
-    .straight { background: #e7f7ec; color: #0a6b34; }
-    .dual { background: #fdeaea; color: #9b1c1c; }
-
-    .pattern {
-      margin-top: 8px;
-      font-weight: 600;
-      font-size: 1.05rem;
-    }
-
-    .note {
-      margin-top: 10px;
-      font-size: 0.85rem;
-      color: #666;
     }
   </style>
 </head>
 
 <body>
   <div class="card">
-    <h1>Bolus Pattern Helper</h1>
-    <p>Suggests a bolus pattern based on meal makeup.</p>
+    <h1>Dual Wave Helper</h1>
 
-    <label>Carbs (g)</label>
-    <input type="number" id="carbs" />
+    <label>Carbohydrates (g)
+      <input id="carbs" type="number" min="0" />
+    </label>
 
-    <label>Fat (g)</label>
-    <input type="number" id="fat" />
+    <label>Fat (g)
+      <input id="fat" type="number" min="0" />
+    </label>
 
-    <label>Protein (g)</label>
-    <input type="number" id="protein" />
+    <label>Protein (g)
+      <input id="protein" type="number" min="0" />
+    </label>
 
-    <label>Fat & protein sensitivity</label>
-    <select id="sensitivity">
-      <option value="0.9">Gentler</option>
-      <option value="1.0" selected>Average</option>
-      <option value="1.1">More aggressive</option>
-    </select>
+    <button onclick="calculate()">Check delivery split</button>
 
-    <button onclick="checkPattern()">Check bolus pattern</button>
-
-    <div id="result"></div>
+    <div id="output" class="result"></div>
   </div>
 
   <script>
-    function checkPattern() {
-      const carbs = Number(document.getElementById("carbs").value) || 0;
-      const fat = Number(document.getElementById("fat").value) || 0;
-      const protein = Number(document.getElementById("protein").value) || 0;
-      const sensitivity = Number(document.getElementById("sensitivity").value);
+    function calculate() {
+      const carbs = Number(document.getElementById("carbs").value);
+      const fat = Number(document.getElementById("fat").value);
+      const protein = Number(document.getElementById("protein").value);
+      const output = document.getElementById("output");
 
-      if (carbs === 0) {
-        alert("Enter at least carbs.");
+      if (carbs <= 0) {
+        output.innerHTML = "Enter carbohydrates to continue.";
         return;
       }
 
-      // Core heuristic
-      const delayScore = (fat + protein * 0.5) * sensitivity;
-      const ratio = delayScore / carbs;
+      // --- Internal weighting ---
+      const fatWeight = fat * 2.0;
+      const proteinWeight = protein * 1.0;
+      const delayLoad = fatWeight + proteinWeight;
 
-      const result = document.getElementById("result");
-      result.className = "result";
+      const delayRatio = delayLoad / carbs;
 
-      if (ratio < 0.5) {
-        result.classList.add("straight");
-        result.innerHTML = `
-          <div><strong>Straight bolus</strong></div>
-          <div class="pattern">100% upfront</div>
-          <div class="note">Fat/protein unlikely to cause significant delay.</div>
-        `;
-      } else if (ratio < 0.8) {
-        result.classList.add("dual");
-        result.innerHTML = `
-          <div><strong>Dual wave – mild</strong></div>
-          <div class="pattern">70% now / 30% over ~2 hrs</div>
-          <div class="note">Some delayed absorption expected.</div>
-        `;
-      } else if (ratio < 1.1) {
-        result.classList.add("dual");
-        result.innerHTML = `
-          <div><strong>Dual wave – moderate</strong></div>
-          <div class="pattern">60% now / 40% over ~2.5 hrs</div>
-          <div class="note">Fat and protein likely to push glucose later.</div>
-        `;
-      } else {
-        result.classList.add("dual");
-        result.innerHTML = `
-          <div><strong>Dual wave – strong</strong></div>
-          <div class="pattern">50% now / 50% over ~3–4 hrs</div>
-          <div class="note">Heavy delay expected.</div>
+      // --- Decision tree ---
+      let resultText = "Straight bolus";
+
+      if (delayRatio >= 0.3) {
+        let split = "60 / 40";
+        let duration = "3 hours";
+
+        if (delayRatio < 0.45) {
+          split = "70 / 30";
+          duration = "2 hours";
+        } else if (delayRatio < 0.7) {
+          split = "60 / 40";
+          duration = "3 hours";
+        } else if (delayRatio < 1.0) {
+          split = "50 / 50";
+          duration = "3 hours";
+        } else if (delayRatio < 1.4) {
+          split = "40 / 60";
+          duration = "4 hours";
+        } else {
+          split = "30 / 70";
+          duration = "4 hours";
+        }
+
+        resultText = `
+          Dual wave<br/>
+          <strong>Suggested delivery split:</strong> ${split}<br/>
+          <strong>Duration:</strong> ${duration}
         `;
       }
+
+      output.innerHTML = resultText;
     }
   </script>
 </body>
