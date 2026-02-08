@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Dual Wave Check</title>
+  <title>Bolus Pattern Helper</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <style>
     body {
       font-family: system-ui, -apple-system, sans-serif;
-      background: #f7f7f7;
+      background: #f5f5f5;
       margin: 0;
       padding: 20px;
       color: #111;
@@ -40,10 +40,10 @@
       font-weight: 600;
     }
 
-    input {
+    input, select {
       width: 100%;
       padding: 12px;
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       margin-top: 6px;
       border-radius: 10px;
       border: 1px solid #ccc;
@@ -61,77 +61,104 @@
       cursor: pointer;
     }
 
-    button:active {
-      opacity: 0.85;
-    }
-
     .result {
       margin-top: 20px;
       padding: 16px;
       border-radius: 12px;
       font-size: 1.1rem;
-      font-weight: 600;
       text-align: center;
     }
 
     .straight { background: #e7f7ec; color: #0a6b34; }
-    .borderline { background: #fff5e5; color: #8a5a00; }
     .dual { background: #fdeaea; color: #9b1c1c; }
+
+    .pattern {
+      margin-top: 8px;
+      font-weight: 600;
+      font-size: 1.05rem;
+    }
 
     .note {
       margin-top: 10px;
       font-size: 0.85rem;
       color: #666;
-      text-align: center;
     }
   </style>
 </head>
 
 <body>
   <div class="card">
-    <h1>Dual Wave Check</h1>
-    <p>Enter meal macros to see if a dual wave may help.</p>
+    <h1>Bolus Pattern Helper</h1>
+    <p>Suggests a bolus pattern based on meal makeup.</p>
 
     <label>Carbs (g)</label>
-    <input type="number" id="carbs" inputmode="numeric" />
+    <input type="number" id="carbs" />
 
     <label>Fat (g)</label>
-    <input type="number" id="fat" inputmode="numeric" />
+    <input type="number" id="fat" />
 
     <label>Protein (g)</label>
-    <input type="number" id="protein" inputmode="numeric" />
+    <input type="number" id="protein" />
 
-    <button onclick="checkBolus()">Check bolus type</button>
+    <label>Fat & protein sensitivity</label>
+    <select id="sensitivity">
+      <option value="0.9">Gentler</option>
+      <option value="1.0" selected>Average</option>
+      <option value="1.1">More aggressive</option>
+    </select>
+
+    <button onclick="checkPattern()">Check bolus pattern</button>
 
     <div id="result"></div>
   </div>
 
   <script>
-    function checkBolus() {
-      const carbs = Number(document.getElementById('carbs').value) || 0;
-      const fat = Number(document.getElementById('fat').value) || 0;
-      const protein = Number(document.getElementById('protein').value) || 0;
+    function checkPattern() {
+      const carbs = Number(document.getElementById("carbs").value) || 0;
+      const fat = Number(document.getElementById("fat").value) || 0;
+      const protein = Number(document.getElementById("protein").value) || 0;
+      const sensitivity = Number(document.getElementById("sensitivity").value);
 
       if (carbs === 0) {
         alert("Enter at least carbs.");
         return;
       }
 
-      const slowLoad = fat + (protein * 0.5);
-      const ratio = slowLoad / carbs;
+      // Core heuristic
+      const delayScore = (fat + protein * 0.5) * sensitivity;
+      const ratio = delayScore / carbs;
 
-      const resultDiv = document.getElementById('result');
-      resultDiv.className = "result";
+      const result = document.getElementById("result");
+      result.className = "result";
 
-      if (ratio < 0.6) {
-        resultDiv.textContent = "Straight bolus likely sufficient";
-        resultDiv.classList.add("straight");
-      } else if (ratio < 0.9) {
-        resultDiv.textContent = "Borderline — consider a split";
-        resultDiv.classList.add("borderline");
+      if (ratio < 0.5) {
+        result.classList.add("straight");
+        result.innerHTML = `
+          <div><strong>Straight bolus</strong></div>
+          <div class="pattern">100% upfront</div>
+          <div class="note">Fat/protein unlikely to cause significant delay.</div>
+        `;
+      } else if (ratio < 0.8) {
+        result.classList.add("dual");
+        result.innerHTML = `
+          <div><strong>Dual wave – mild</strong></div>
+          <div class="pattern">70% now / 30% over ~2 hrs</div>
+          <div class="note">Some delayed absorption expected.</div>
+        `;
+      } else if (ratio < 1.1) {
+        result.classList.add("dual");
+        result.innerHTML = `
+          <div><strong>Dual wave – moderate</strong></div>
+          <div class="pattern">60% now / 40% over ~2.5 hrs</div>
+          <div class="note">Fat and protein likely to push glucose later.</div>
+        `;
       } else {
-        resultDiv.textContent = "Dual wave recommended";
-        resultDiv.classList.add("dual");
+        result.classList.add("dual");
+        result.innerHTML = `
+          <div><strong>Dual wave – strong</strong></div>
+          <div class="pattern">50% now / 50% over ~3–4 hrs</div>
+          <div class="note">Heavy delay expected.</div>
+        `;
       }
     }
   </script>
